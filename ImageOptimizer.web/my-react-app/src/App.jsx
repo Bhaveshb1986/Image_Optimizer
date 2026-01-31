@@ -45,6 +45,7 @@ function App() {
   const [message, setMessage] = useState(null)
   const [error, setError] = useState(null)
   const [processedImage, setProcessedImage] = useState(null)
+  const [processedFilename, setProcessedFilename] = useState(null)
   const [originalSize, setOriginalSize] = useState(null)
   const [processedSize, setProcessedSize] = useState(null)
   const [sizeReduction, setSizeReduction] = useState(null)
@@ -94,6 +95,7 @@ function App() {
     setError(null)
     setMessage(null)
     setProcessedImage(null)
+    setProcessedFilename(null)
 
     try {
       // Create FormData to send file
@@ -114,9 +116,10 @@ function App() {
       }
 
       setMessage(data.message || 'Image uploaded successfully!')
-      // Set the processed image URL and file sizes
+      // Set the processed image URL, filename (for download), and file sizes
       if (data.processed_image) {
         setProcessedImage(`${API_URL}/uploads/${data.processed_image}`)
+        setProcessedFilename(data.processed_image)
       }
       if (data.original_size !== undefined) {
         setOriginalSize(data.original_size)
@@ -142,13 +145,33 @@ function App() {
     setMessage(null)
     setError(null)
     setProcessedImage(null)
+    setProcessedFilename(null)
     setOriginalSize(null)
     setProcessedSize(null)
     setSizeReduction(null)
   }
 
-  return (
-    <div className="app-container">
+  const handleDownload = async () => {
+    if (!processedImage || !processedFilename) return
+    try {
+      const res = await fetch(processedImage)
+      if (!res.ok) throw new Error('Download failed')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = processedFilename
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      setError(err.message || 'Failed to download image')
+      console.error('Download error:', err)
+    }
+  }
+
+  return (    <div className="app-container">
       <h1>Image Optimizer</h1>
       <p className="subtitle">Upload an image to optimize and resize</p>
 
@@ -257,13 +280,13 @@ function App() {
               <div className="image-wrapper">
                 <img src={processedImage} alt="Processed" className="grid-image" />
               </div>
-              <a
-                href={processedImage}
-                download
+              <button
+                type="button"
+                onClick={handleDownload}
                 className="download-link"
               >
                 Download Processed Image
-              </a>
+              </button>
             </div>
           )}
         </div>
